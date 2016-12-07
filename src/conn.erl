@@ -21,6 +21,11 @@
 
 -include("proto.hrl").
 
+%% 2016-12-07
+%% 修改：添加LOSTTIME定义
+%% by: davionlee
+-define(LOSTTIME, 20).
+
 %% 启动gen_server
 start_link(Socket) ->
   gen_server:start_link(?MODULE, [Socket], []).
@@ -52,11 +57,19 @@ handle_call(heart_beat, _From, State = #state{socket = Socket,
     true -> NewSate = #state{socket = Socket, keep_still_times = LostTimes + 1};
     false -> NewState = #state{socket = Socket, recv_cnt = NowConnBags, keep_still_times = 0}
   end,
+  %case LostTimes >= ?LOSTTIME of
+  %  true -> gen_tcp:close(Socket),
+  %    {stop, timeout, NewState};
+  %  false -> {noreply, NewState}
+  %end.
+  %% 2016-12-07
+  %% 修改：修改上面的case，使编译通过
+  %% by: davionlee
   case LostTimes >= ?LOSTTIME of
     true -> gen_tcp:close(Socket),
-      {stop, timeout, NewState};
-    false -> {noreply, NewState}
-  end.
+      {stop, timeout, State};
+    false -> {noreply, State}
+  end;
 
 handle_call(Call, From, State) ->
   State1 = conn_config:exec(cast, [Call, From, State]),
